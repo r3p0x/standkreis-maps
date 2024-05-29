@@ -18,7 +18,6 @@ const ThreeScene: React.FC = () => {
     // 1. Create a Scene
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87ceeb); // Light blue background for better visibility
-    
     // @ts-ignore
     sceneRef.current = scene;
 
@@ -51,11 +50,11 @@ const ThreeScene: React.FC = () => {
 
     // 7. Add Grid Helper
     const gridHelper = new THREE.GridHelper(200, 50, 0x000000, 0x000000);
-    gridHelper.material.opacity = 0.125;
+    gridHelper.material.opacity = 0.25;
     gridHelper.material.transparent = true;
     scene.add(gridHelper);
 
-    // 8. Add Ground Plane with Border
+    // 8. Add Ground Plane with Opacity
     const groundGeometry = new THREE.PlaneGeometry(120, 10);
     const groundMaterial = new THREE.MeshBasicMaterial({ color: 0x1E8CF2, side: THREE.DoubleSide });
     groundMaterial.transparent = true;
@@ -70,6 +69,58 @@ const ThreeScene: React.FC = () => {
     const border = new THREE.LineSegments(borderGeometry, borderMaterial);
     border.rotation.x = -Math.PI / 2;
     scene.add(border);
+
+    // 10. Add Raycaster for Hover Effect
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    const onMouseMove = (event: MouseEvent) => {
+      // Calculate mouse position in normalized device coordinates (-1 to +1)
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+
+      // Calculate objects intersecting the picking ray
+      const intersects = raycaster.intersectObjects(scene.children, true);
+
+      if (treeRef.current) {
+        treeRef.current.traverse((child) => {
+          if (child instanceof THREE.Group) {
+            child.children.forEach((grandchild) => {
+              if (grandchild instanceof THREE.LineSegments) {
+                grandchild.visible = false; // Hide outline by default
+              }
+            });
+          }
+        });
+      }
+
+      if (intersects.length > 0) {
+        console.log('Intersected object:', intersects[0].object);
+
+        let currentObj = intersects[0].object;
+        while (currentObj.parent) {
+          if (currentObj.parent === treeRef.current) {
+            console.log('Hovering over tree');
+            treeRef.current.traverse((child) => {
+              if (child instanceof THREE.Group) {
+                child.children.forEach((grandchild) => {
+                  if (grandchild instanceof THREE.LineSegments) {
+                    console.log('Setting visibility to true for:', grandchild);
+                    grandchild.visible = true; // Show outline
+                  }
+                });
+              }
+            });
+            break;
+          }
+          currentObj = currentObj.parent;
+        }
+      }
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
 
     // Render the Scene
     const animate = () => {
@@ -88,6 +139,7 @@ const ThreeScene: React.FC = () => {
       if (mountRef.current) {
         mountRef.current.removeChild(renderer.domElement);
       }
+      window.removeEventListener('mousemove', onMouseMove);
       controls.dispose();
     };
   }, []);

@@ -19,12 +19,30 @@ const Tree = forwardRef<THREE.Group, { position: THREE.Vector3 }>(({ position },
     tree.add(foliage);
     tree.position.copy(position);
 
+    // Create an outline mesh
+    const trunkOutlineGeometry = new THREE.EdgesGeometry(trunkGeometry);
+    const foliageOutlineGeometry = new THREE.EdgesGeometry(foliageGeometry);
+
+    // const outlineMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff });
+    const outlineMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff, linewidth: 2, transparent: true, opacity: 1 });
+    const trunkOutline = new THREE.LineSegments(trunkOutlineGeometry, outlineMaterial);
+    const foliageOutline = new THREE.LineSegments(foliageOutlineGeometry, outlineMaterial);
+    foliageOutline.position.y = 0.75;
+
+    const outlineMesh = new THREE.Group();
+    outlineMesh.add(trunkOutline);
+    outlineMesh.add(foliageOutline);
+    outlineMesh.visible = true; // Initially hidden
+
+    tree.add(outlineMesh);
+
     // @ts-ignore
     ref.current = tree;
 
     return () => {
       tree.remove(trunk);
       tree.remove(foliage);
+      tree.remove(outlineMesh);
     };
   }, [position, ref]);
 
